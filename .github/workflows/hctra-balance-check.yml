@@ -2,7 +2,7 @@ name: HCTRA Daily Balance Check
 
 on:
   schedule:
-    # 13:00 UTC = 8:00 AM Central Standard Time (7:00 AM during Central
+    # 13:00 UTC = 7:00 AM Central Standard Time (8:00 AM during Central
     # Daylight Time). GitHub Actions cron does not observe DST.
     - cron: "0 13 * * *"
   workflow_dispatch: {}

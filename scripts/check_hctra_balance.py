@@ -21,7 +21,7 @@ Required environment variables:
   SMTP_USERNAME        SMTP auth username (usually your full Zoho email)
   SMTP_PASSWORD        SMTP auth password (Zoho app-specific password)
   EMAIL_FROM           From address for the notification email
-  EMAIL_TO             Recipient address (e.g. ryanreg48@gmail.com)
+  EMAIL_TO             Recipient address (e.g. user@example.com)
 """
 import os
 import re
@@ -31,7 +31,6 @@ from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
-from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright.sync_api import sync_playwright
 
 LOGIN_URL = "https://www.hctra.org/Login"
@@ -132,7 +131,7 @@ def run():
             browser.close()
             return balance, None
 
-        except (PlaywrightTimeoutError, RuntimeError) as exc:
+        except Exception as exc:
             try:
                 page.screenshot(path=SCREENSHOT_PATH, full_page=True)
             except Exception:
