@@ -148,7 +148,16 @@ def send_email(subject, body, attach_screenshot=False):
             "SMTP_PORT environment variable is empty or not set (check the "
             "GitHub secret has a value, e.g. 587)"
         )
-    smtp_port = int(smtp_port_raw)
+    try:
+        smtp_port = int(smtp_port_raw)
+    except ValueError:
+        raise RuntimeError(
+            f"SMTP_PORT environment variable is not a valid integer: {smtp_port_raw!r}"
+        ) from None
+    if not 1 <= smtp_port <= 65535:
+        raise RuntimeError(
+            f"SMTP_PORT environment variable is out of range (1-65535): {smtp_port}"
+        )
     smtp_username = os.environ["SMTP_USERNAME"]
     smtp_password = os.environ["SMTP_PASSWORD"]
     email_from = os.environ["EMAIL_FROM"]
