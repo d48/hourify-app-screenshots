@@ -142,7 +142,22 @@ def run():
 
 def send_email(subject, body, attach_screenshot=False):
     smtp_host = os.environ["SMTP_HOST"]
-    smtp_port = int(os.environ["SMTP_PORT"])
+    smtp_port_raw = os.environ.get("SMTP_PORT", "").strip()
+    if not smtp_port_raw:
+        raise RuntimeError(
+            "SMTP_PORT environment variable is empty or not set (check the "
+            "GitHub secret has a value, e.g. 587)"
+        )
+    try:
+        smtp_port = int(smtp_port_raw)
+    except ValueError:
+        raise RuntimeError(
+            f"SMTP_PORT environment variable is not a valid integer: {smtp_port_raw!r}"
+        ) from None
+    if not 1 <= smtp_port <= 65535:
+        raise RuntimeError(
+            f"SMTP_PORT environment variable is out of range (1-65535): {smtp_port}"
+        )
     smtp_username = os.environ["SMTP_USERNAME"]
     smtp_password = os.environ["SMTP_PASSWORD"]
     email_from = os.environ["EMAIL_FROM"]
@@ -172,25 +187,42 @@ def main():
     balance, error = run()
 
     if error is not None:
-        send_email(
-            subject="HCTRA balance check FAILED",
-            body=(
-                "The daily HCTRA balance check failed with the following "
-                f"error:\n\n{error}\n\n"
-                "A screenshot at the point of failure is attached if one "
-                "could be captured. This is often caused by reCAPTCHA "
-                "flagging the automated run, a changed page layout, or "
-                "expired/invalid credentials."
-            ),
-            attach_screenshot=True,
-        )
+        # Print the real failure before attempting to email it, so it's
+        # visible in the Actions log even if send_email() itself fails
+        # (e.g. a missing/misconfigured SMTP secret).
         print(f"FAILED: {error}", file=sys.stderr)
+        try:
+            send_email(
+                subject="HCTRA balance check FAILED",
+                body=(
+                    "The daily HCTRA balance check failed with the following "
+                    f"error:\n\n{error}\n\n"
+                    "A screenshot at the point of failure is attached if one "
+                    "could be captured. This is often caused by reCAPTCHA "
+                    "flagging the automated run, a changed page layout, or "
+                    "expired/invalid credentials."
+                ),
+                attach_screenshot=True,
+            )
+        except Exception as email_exc:
+            print(
+                f"Additionally failed to send the failure notification email: {email_exc}",
+                file=sys.stderr,
+            )
         sys.exit(1)
 
-    send_email(
-        subject=f"HCTRA Available Balance: {balance}",
-        body=f"Your HCTRA Available Balance today is: {balance}",
-    )
+    try:
+        send_email(
+            subject=f"HCTRA Available Balance: {balance}",
+            body=f"Your HCTRA Available Balance today is: {balance}",
+        )
+    except Exception as email_exc:
+        print(
+            f"Balance check succeeded (balance={balance}) but failed to email it: {email_exc}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
     print(f"OK: {balance}")
 
 
