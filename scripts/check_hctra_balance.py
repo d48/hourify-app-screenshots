@@ -104,7 +104,12 @@ def run():
         page.set_default_timeout(NAV_TIMEOUT_MS)
 
         try:
-            page.goto(LOGIN_URL, wait_until="networkidle")
+            # "networkidle" is unreliable here: the page loads Google Tag
+            # Manager, New Relic, and reCAPTCHA Enterprise, which keep
+            # background network activity going and can prevent the page
+            # from ever going network-idle within the timeout. Wait for
+            # the DOM instead and rely on explicit element waits below.
+            page.goto(LOGIN_URL, wait_until="domcontentloaded")
 
             username_field, password_field, container = find_username_field(page)
             username_field.fill(username)
@@ -117,7 +122,7 @@ def run():
             # reCAPTCHA challenge or bad credentials will time out here.
             page.wait_for_url(lambda url: "/Login" not in url, timeout=NAV_TIMEOUT_MS)
 
-            page.goto(ACCOUNT_URL, wait_until="networkidle")
+            page.goto(ACCOUNT_URL, wait_until="domcontentloaded")
             page.wait_for_selector(f"text=/{BALANCE_LABEL_RE.pattern}/i", timeout=NAV_TIMEOUT_MS)
 
             balance = extract_balance(page)
